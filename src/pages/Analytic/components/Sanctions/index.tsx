@@ -46,7 +46,7 @@ const renderActiveShape = (props: any) => {
   return (
     <g>
       <text x={cx} y={20} dy={8} textAnchor="middle" fill="#000">
-        Код: {payload.name}
+        {payload.name}
       </text>
       <Sector
         cx={cx}
@@ -91,26 +91,16 @@ const renderActiveShape = (props: any) => {
   );
 };
 
-type Options = keyof AnalyticsSanctions;
-
-const options: { content: string; value: Options }[] = [
-  { content: "Санкционные", value: "sanctionSum" },
-  { content: "Несанкционные", value: "nonSanctionSum" },
-];
-
 const Sanctions: FC<VolumeProps> = ({ filters, code }) => {
   const graphData = useStore("mainDataStore");
   const [data, setData] = useState<AnalyticsSanctions[]>([]);
-  const [selectedInfo, setSelectedInfo] = useState<Options>("sanctionSum");
   const [flags, setFlags] = useState({ isLoading: true, isFailed: false });
   const [activeShape, setActiveShape] = useState(0);
 
   const shades = useMemo(() => {
-    const shadesCount = Math.ceil(data.length / 3);
+    const shadesCount = Math.ceil(data.length / 2);
     return [
       ...shadeGenerator("#1a70ff", shadesCount),
-      ...shadeGenerator("#ba1928", shadesCount),
-      ...shadeGenerator("#FED766", shadesCount),
     ];
   }, [data.length]);
 
@@ -144,32 +134,23 @@ const Sanctions: FC<VolumeProps> = ({ filters, code }) => {
     fetchData(filters);
   }, [fetchData, filters]);
 
-  const dataForGraph = useMemo(
-    () =>
-      data.map((obj) => ({
-        name: obj.code,
-        value: parseFloat(obj[selectedInfo]) || 0,
-      })),
-    [data, selectedInfo]
-  );
-
-  const selectedOptions = useMemo(
-    () =>
-      options.find(({ value }) => value === selectedInfo) || {
-        value: "",
-        content: "",
-      },
-    [selectedInfo]
-  );
-
-  const setOptions: OptionSelectorProps["setSelected"] = useCallback((opt) => {
-    setSelectedInfo(opt.value as any);
-  }, []);
+  const dataForGraph = useMemo(() => {
+    const dataObj = data[0];
+    if (!dataObj) {
+      return [{ value: 0 }];
+    }
+    return [
+      { name: 'Несанкционные', value: parseFloat(dataObj.nonSanctionSum) },
+      { name: 'Санкционные', value: parseFloat(dataObj.sanctionSum) },
+    ];
+  }, [data]);
 
   if (flags.isLoading) {
-    return <div className="full-loader">
-		<Loader />
-	</div>;
+    return (
+      <div className="full-loader">
+        <Loader />
+      </div>
+    );
   }
 
   return (
@@ -178,13 +159,6 @@ const Sanctions: FC<VolumeProps> = ({ filters, code }) => {
         <div>
           {dataForGraph.length !== 0 ? (
             <>
-              <OptionSelector
-                className={s.selector}
-                setSelected={setOptions}
-                name="options"
-                selected={selectedOptions}
-                options={options}
-              />
               <PieChart width={500} height={300}>
                 <Pie
                   data={dataForGraph}

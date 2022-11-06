@@ -58,6 +58,10 @@ const Analytics: FC<AnalyticsProps> = observer(({ code, id }) => {
   const [isLiked, setIsLiked] = useState(isLikedFormStore);
 
   useEffect(() => {
+    if (id) analyticStore.getAnalytics(+id, { ...filterValues, code });
+  }, [analyticStore, code, filterValues, id]);
+
+  useEffect(() => {
     if (isLiked) {
       userStore.addToFavorite(id);
       return;
@@ -110,6 +114,51 @@ const Analytics: FC<AnalyticsProps> = observer(({ code, id }) => {
     ],
     [code, country, federalDistricts.countries, filterValues, setCountry]
   );
+
+  const handleDownload = useCallback(
+    (type: "pptx" | "xlsx") => async () => {
+      try {
+        let url: string | undefined = "";
+        if (type === "pptx") {
+          url = await analyticStore.getPPTXExport({
+            ...filterValues,
+            code,
+          });
+        } else {
+          url = await analyticStore.getExcelExport({
+            ...filterValues,
+            code,
+          });
+        }
+        if (url) {
+          const templateLink = document.createElement("a");
+          templateLink.style.display = "none";
+          templateLink.href = url;
+          templateLink.setAttribute("download", code + "." + type);
+          if (typeof templateLink.download === "undefined") {
+            templateLink.setAttribute("target", "_blank");
+          }
+          document.body.appendChild(templateLink);
+          templateLink.click();
+          document.body.removeChild(templateLink);
+          window.URL.revokeObjectURL(url);
+          return;
+        }
+        throw new Error("empty link");
+      } catch (e) {
+        toast.error("Ошибка загрузки");
+      }
+    },
+    [analyticStore, code, filterValues]
+  );
+
+  if (analyticStore.flags.isLoading) {
+    return (
+      <div className={"full-loader"}>
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <section className={clsx(s.wrapper, "container")}>
@@ -173,7 +222,7 @@ const Analytics: FC<AnalyticsProps> = observer(({ code, id }) => {
             <p>
               Потенциальный объем ниши:{" "}
               <span className="highlight">
-                {three < 0 ? `${three} тыс.долл` : 0}
+                {three < 0 ? `${Math.abs(three)}` : 0}
               </span>
             </p>
           </div>
@@ -185,13 +234,13 @@ const Analytics: FC<AnalyticsProps> = observer(({ code, id }) => {
           <div className={s.exportSection}>
             <button
               className={clsx("button-blue", s.exportButton)}
-              onClick={() => analyticStore.getExport({ ...filterValues, code })}
+              onClick={handleDownload('xlsx')}
             >
               Excel
             </button>
-			<button
+            <button
               className={clsx("button-blue", s.exportButton)}
-              onClick={() => analyticStore.getExport({ ...filterValues, code })}
+              onClick={handleDownload('pptx')}
             >
               PPTX
             </button>
@@ -234,28 +283,18 @@ const Analytics: FC<AnalyticsProps> = observer(({ code, id }) => {
 });
 
 const AnalyticsWrapper = observer(() => {
-  const navigator = useNavigate();
   const { code, id } = useParams();
-  const analyticsStore = useStore("analyticsStore");
+  const navigator = useNavigate();
 
   useEffect(() => {
     if (!code || !id) {
       toast.error(`Товара с кодом ${code} не существует`);
       navigator(routes[404]);
     }
-    if (id) analyticsStore.getAnalytics(+id);
-  }, [analyticsStore, code, id, navigator]);
+  }, [code, id, navigator]);
 
   if (!code || !id) {
     return null;
-  }
-
-  if (analyticsStore.flags.isLoading) {
-    return (
-      <div className={"full-loader"}>
-        <Loader />
-      </div>
-    );
   }
 
   return (

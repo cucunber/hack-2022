@@ -1,5 +1,6 @@
 import { TnvedId } from "../../domain";
 import TnvedDomain from "../../domain/tnved";
+import { getQueryParams } from "../../utils";
 import API from "../api";
 
 const endpoints = {
@@ -23,20 +24,21 @@ class AnalyticsService {
 	constructor(apiInstance: API){
 		this.apiInstance = apiInstance;
 	}
-	async getAnalyticPart<T extends keyof typeof endpoints>(endpoint: T) {
+	async getAnalyticPart<T extends keyof typeof endpoints>(endpoint: T, params: object) {
 		try {
-			const { data } = await this.apiInstance.get<AnalyticsEndpointsResponse[T]>(endpoints[endpoint]);
+			const queryParams = getQueryParams(params);
+			const { data } = await this.apiInstance.get<AnalyticsEndpointsResponse[T]>(endpoints[endpoint], { params: queryParams });
 			return data
 		} catch(e){
 			throw e
 		}
 	}
-	async getAllData(){
-		const oneTwoSixPromise = await this.getAnalyticPart('analyticsOneTwoSix');
-		const threePromise = await this.getAnalyticPart('analyticsThree');
-		const fourPromise = await this.getAnalyticPart('analyticsFour');
-		const fivePromise = await this.getAnalyticPart('analyticsFive');
-		const sevenPromise = await this.getAnalyticPart('analyticsSeven');
+	async getAllData(params: object){
+		const oneTwoSixPromise = await this.getAnalyticPart('analyticsOneTwoSix', params);
+		const threePromise = await this.getAnalyticPart('analyticsThree', params);
+		const fourPromise = await this.getAnalyticPart('analyticsFour', params);
+		const fivePromise = await this.getAnalyticPart('analyticsFive', params);
+		const sevenPromise = await this.getAnalyticPart('analyticsSeven', params);
 		try {
 			const analytics = await Promise.all([oneTwoSixPromise, threePromise, fourPromise, fivePromise, sevenPromise]);
 			return analytics;
